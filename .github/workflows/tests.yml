@@ -1,0 +1,81 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, feature/* ]
+    paths:
+      - 'agent/**'
+      - 'ui/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'agent/**'
+      - 'ui/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [agent, ui]
+      fail-fast: false  # Don't fail fast to get results from both modules
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.module }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black flake8 codecov
+
+      - name: Lint with flake8
+        working-directory: ${{ matrix.module }}
+        run: |
+          flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Format with black
+        working-directory: ${{ matrix.module }}
+        run: |
+          black src --check
+
+      - name: Run tests with coverage
+        working-directory: ${{ matrix.module }}
+        run: |
+          mkdir -p data
+          if [ -f src/test_*.py ]; then
+            python -m pytest src/test_*.py -v --cov=src --cov-report=xml --cov-report=term-missing
+          else
+            echo "No tests found in ${{ matrix.module }}/src, creating empty coverage report"
+            echo '<?xml version="1.0" ?><coverage version="7.3.2"></coverage>' > coverage.xml
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ${{ matrix.module }}/coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+          flags: ${{ matrix.module }}
+
+  coverage-report:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Generate coverage badge
+        run: |
+          echo "Coverage badges will be updated through Codecov integration" 

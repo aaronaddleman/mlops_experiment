@@ -3,6 +3,8 @@
 [![Agent Coverage](https://codecov.io/gh/mlops_experiment/branch/main/graph/badge.svg?flag=unittests&path=agent/src)](https://codecov.io/gh/mlops_experiment)
 [![UI Coverage](https://codecov.io/gh/mlops_experiment/branch/main/graph/badge.svg?flag=unittests&path=ui/src)](https://codecov.io/gh/mlops_experiment)
 [![CI/CD](https://github.com/mlops_experiment/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/ci-cd.yml)
+[![Tests](https://github.com/mlops_experiment/actions/workflows/tests.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/tests.yml)
+[![Build](https://github.com/mlops_experiment/actions/workflows/build-test.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/build-test.yml)
 
 A Docker Compose-based project for experimenting with ML agents and observability.
 
@@ -71,6 +73,31 @@ pytest src/test_ui.py -v --cov=src --cov-report=term-missing
 - Coverage reports are automatically generated for each pull request
 - Coverage changes are commented on PRs
 - Historical coverage data is available on Codecov
+
+## GitHub Workflows
+
+The project uses several GitHub Actions workflows for continuous integration and testing:
+
+### CI/CD Pipeline (ci-cd.yml)
+- **Triggers**: On push to main/feature branches and pull requests to main
+- **Functions**: Runs tests, builds containers, checks code quality, and deploys (main branch only)
+- **Usage**: Comprehensive pipeline for full validation and deployment
+
+### Tests Workflow (tests.yml)
+- **Triggers**: On code changes to agent or UI, can be run manually
+- **Functions**: Runs tests and uploads coverage reports without container builds
+- **Usage**: Fast feedback on code changes during development
+
+### Build Test (build-test.yml)
+- **Triggers**: On push/PR to main branch, can be run manually
+- **Functions**: Validates Docker builds without running tests
+- **Usage**: Verify Docker build process works correctly
+
+To manually trigger a workflow:
+1. Go to the Actions tab in GitHub
+2. Select the workflow you want to run
+3. Click "Run workflow" button
+4. Select the branch and click "Run workflow"
 
 ## Monitoring
 
