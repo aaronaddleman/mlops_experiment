@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    volumes:
+      - ./agent/src:/app/src
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus 
