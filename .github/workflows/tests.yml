@@ -1,0 +1,152 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, feature/* ]
+    paths:
+      - 'agent/**'
+      - 'ui/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'agent/**'
+      - 'ui/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [agent, ui]
+      fail-fast: false  # Don't fail fast to get results from both modules
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.module }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black flake8
+
+      - name: Lint with flake8
+        working-directory: ${{ matrix.module }}
+        run: |
+          flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Format with black
+        working-directory: ${{ matrix.module }}
+        run: |
+          black src --check
+
+      - name: Run tests with coverage
+        working-directory: ${{ matrix.module }}
+        run: |
+          mkdir -p data
+          if [ -f src/test_*.py ]; then
+            python -m pytest src/test_*.py -v --cov=src --cov-report=xml --cov-report=term-missing --cov-report=html
+          else
+            echo "No tests found in ${{ matrix.module }}/src, creating empty coverage report"
+            mkdir -p htmlcov
+            echo '<html><body><h1>No tests found</h1></body></html>' > htmlcov/index.html
+            echo '<?xml version="1.0" ?><coverage version="7.3.2"></coverage>' > coverage.xml
+          fi
+
+      - name: Generate Coverage Badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: coverage-${{ matrix.module }}.svg
+          coverage-xml: ${{ matrix.module }}/coverage.xml
+
+      - name: Upload Coverage Badge
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-badge-${{ matrix.module }}
+          path: coverage-${{ matrix.module }}.svg
+          retention-days: 5
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-${{ matrix.module }}
+          path: ${{ matrix.module }}/htmlcov/
+          retention-days: 5
+
+  coverage-report:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./coverage-artifacts
+
+      - name: List downloaded artifacts
+        run: |
+          ls -la ./coverage-artifacts
+          find ./coverage-artifacts -type f | sort
+
+      - name: Move coverage badges
+        run: |
+          mkdir -p .github/badges
+          mv coverage-artifacts/coverage-badge-agent/coverage-agent.svg .github/badges/ || true
+          mv coverage-artifacts/coverage-badge-ui/coverage-ui.svg .github/badges/ || true
+      
+      - name: Commit coverage badges
+        if: github.ref == 'refs/heads/main'
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '.github/badges'
+          message: 'Update coverage badges [skip ci]'
+          default_author: github_actions
+
+      - name: Combine reports
+        run: |
+          mkdir -p public
+          echo "<html><head><title>Coverage Report</title></head><body>" > public/index.html
+          echo "<h1>Test Coverage Reports</h1>" >> public/index.html
+          echo "<ul>" >> public/index.html
+          
+          if [ -d "coverage-artifacts/coverage-report-agent" ]; then
+            mkdir -p public/agent
+            cp -r coverage-artifacts/coverage-report-agent/* public/agent/ || echo "No agent coverage reports found"
+            echo "<li><a href='./agent/index.html'>Agent Coverage Report</a></li>" >> public/index.html
+          fi
+          
+          if [ -d "coverage-artifacts/coverage-report-ui" ]; then
+            mkdir -p public/ui
+            cp -r coverage-artifacts/coverage-report-ui/* public/ui/ || echo "No UI coverage reports found"
+            echo "<li><a href='./ui/index.html'>UI Coverage Report</a></li>" >> public/index.html
+          fi
+          
+          echo "</ul>" >> public/index.html
+          echo "</body></html>" >> public/index.html
+
+      - name: Upload Combined Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: combined-coverage-reports
+          path: public/
+          retention-days: 5
+
+      - name: Deploy coverage reports to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          destination_dir: coverage-reports 

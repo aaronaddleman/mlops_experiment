@@ -1,0 +1,49 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+  ignore:
+    - "**/__init__.py"
+    - "**/test_*.py"
+    - "**/tests/*"
+    - "**/setup.py"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
+
+flags:
+  unittests:
+    paths:
+      - agent/src/
+      - ui/src/
+    carryforward: true
+
+fixes:
+  - "agent/src/::agent/src/"
+  - "ui/src/::ui/src/"
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+codecov:
+  require_ci_to_pass: yes
+  bot: codecov[bot]
+  max_report_age: off
+  after_n_builds: 1
+  base_commit: auto
+  slug: mlops_experiment 

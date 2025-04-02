@@ -5,27 +5,70 @@ services:
     build:
       context: ./agent
       dockerfile: Dockerfile
-    volumes:
-      - ./agent/src:/app/src
+    command: python src/main.py
     ports:
       - "8000:8000"
     environment:
-      - PYTHONUNBUFFERED=1
+      - PROMETHEUS_MULTIPROC_DIR=/tmp
+    volumes:
+      - ./agent:/app
+      - /tmp:/tmp
+      - habit_data:/app/data
+    networks:
+      - habit-network
     depends_on:
       - prometheus
 
-  prometheus:
-    image: prom/prometheus:latest
+  ui:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    command: python src/ui.py
+    ports:
+      - "5001:5000"
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./agent:/app
+    networks:
+      - habit-network
+    depends_on:
+      - agent
+
+  prometheus:
+    image: prom/prometheus:v2.49.1
     ports:
       - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    networks:
+      - habit-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.0
     ports:
       - "3000:3000"
     volumes:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    networks:
+      - habit-network
     depends_on:
-      - prometheus 
+      - prometheus
+
+networks:
+  habit-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  habit_data: 
