@@ -105,7 +105,7 @@ jobs:
           message: 'Update coverage badges [skip ci]'
           default_author: github_actions
 
-      - name: Combine coverage reports
+      - name: Prepare coverage reports
         run: |
           mkdir -p public
           echo "<html><head><title>Coverage Report</title></head><body>" > public/index.html
@@ -113,11 +113,11 @@ jobs:
           echo "<ul>" >> public/index.html
           
           mkdir -p public/agent
-          cp -r agent/htmlcov/* public/agent/
+          cp -r agent/htmlcov/* public/agent/ || echo "No agent coverage reports found"
           echo "<li><a href='./agent/index.html'>Agent Coverage Report</a></li>" >> public/index.html
           
           mkdir -p public/ui
-          cp -r ui/htmlcov/* public/ui/
+          cp -r ui/htmlcov/* public/ui/ || echo "No UI coverage reports found"
           echo "<li><a href='./ui/index.html'>UI Coverage Report</a></li>" >> public/index.html
           
           echo "</ul>" >> public/index.html
@@ -128,7 +128,7 @@ jobs:
         with:
           name: coverage-reports
           path: |
-            public
+            public/
             agent/coverage.xml
             ui/coverage.xml
           retention-days: 7
@@ -145,7 +145,12 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: coverage-reports
-          path: coverage-reports
+          path: ./coverage-reports
+
+      - name: List downloaded artifacts
+        run: |
+          ls -la ./coverage-reports
+          find ./coverage-reports -type f | sort
 
       - name: Deploy coverage reports to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

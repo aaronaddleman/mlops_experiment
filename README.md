@@ -68,6 +68,23 @@ cd ui
 pytest src/test_ui.py -v --cov=src --cov-report=term-missing
 ```
 
+### Running GitHub Workflows Locally
+
+You can test GitHub Actions workflows locally before pushing changes:
+
+```bash
+# Install act (https://github.com/nektos/act)
+brew install act  # macOS
+
+# Run the tests workflow
+./scripts/run-workflow-locally.sh .github/workflows/tests.yml
+
+# For more options
+./scripts/run-workflow-locally.sh --help
+```
+
+See [Running Workflows Locally](docs/RUNNING_WORKFLOWS_LOCALLY.md) for detailed instructions.
+
 ### Coverage Reports
 
 - Coverage reports are automatically generated for each PR and commit to main

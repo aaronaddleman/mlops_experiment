@@ -74,12 +74,14 @@ jobs:
         with:
           name: coverage-badge-${{ matrix.module }}
           path: coverage-${{ matrix.module }}.svg
+          retention-days: 5
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report-${{ matrix.module }}
           path: ${{ matrix.module }}/htmlcov/
+          retention-days: 5
 
   coverage-report:
     needs: test
@@ -91,7 +93,12 @@ jobs:
       - name: Download all coverage artifacts
         uses: actions/download-artifact@v3
         with:
-          path: coverage-artifacts
+          path: ./coverage-artifacts
+
+      - name: List downloaded artifacts
+        run: |
+          ls -la ./coverage-artifacts
+          find ./coverage-artifacts -type f | sort
 
       - name: Move coverage badges
         run: |
@@ -116,18 +123,25 @@ jobs:
           
           if [ -d "coverage-artifacts/coverage-report-agent" ]; then
             mkdir -p public/agent
-            cp -r coverage-artifacts/coverage-report-agent/* public/agent/
+            cp -r coverage-artifacts/coverage-report-agent/* public/agent/ || echo "No agent coverage reports found"
             echo "<li><a href='./agent/index.html'>Agent Coverage Report</a></li>" >> public/index.html
           fi
           
           if [ -d "coverage-artifacts/coverage-report-ui" ]; then
             mkdir -p public/ui
-            cp -r coverage-artifacts/coverage-report-ui/* public/ui/
+            cp -r coverage-artifacts/coverage-report-ui/* public/ui/ || echo "No UI coverage reports found"
             echo "<li><a href='./ui/index.html'>UI Coverage Report</a></li>" >> public/index.html
           fi
           
           echo "</ul>" >> public/index.html
           echo "</body></html>" >> public/index.html
+
+      - name: Upload Combined Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: combined-coverage-reports
+          path: public/
+          retention-days: 5
 
       - name: Deploy coverage reports to GitHub Pages
         if: github.ref == 'refs/heads/main'
