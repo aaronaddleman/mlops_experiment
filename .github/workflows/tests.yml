@@ -37,7 +37,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov black flake8 codecov
+          pip install pytest pytest-cov black flake8
 
       - name: Lint with flake8
         working-directory: ${{ matrix.module }}
@@ -55,19 +55,31 @@ jobs:
         run: |
           mkdir -p data
           if [ -f src/test_*.py ]; then
-            python -m pytest src/test_*.py -v --cov=src --cov-report=xml --cov-report=term-missing
+            python -m pytest src/test_*.py -v --cov=src --cov-report=xml --cov-report=term-missing --cov-report=html
           else
             echo "No tests found in ${{ matrix.module }}/src, creating empty coverage report"
+            mkdir -p htmlcov
+            echo '<html><body><h1>No tests found</h1></body></html>' > htmlcov/index.html
             echo '<?xml version="1.0" ?><coverage version="7.3.2"></coverage>' > coverage.xml
           fi
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Generate Coverage Badge
+        uses: tj-actions/coverage-badge-py@v2
         with:
-          files: ${{ matrix.module }}/coverage.xml
-          fail_ci_if_error: false
-          verbose: true
-          flags: ${{ matrix.module }}
+          output: coverage-${{ matrix.module }}.svg
+          coverage-xml: ${{ matrix.module }}/coverage.xml
+
+      - name: Upload Coverage Badge
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-badge-${{ matrix.module }}
+          path: coverage-${{ matrix.module }}.svg
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-${{ matrix.module }}
+          path: ${{ matrix.module }}/htmlcov/
 
   coverage-report:
     needs: test
@@ -76,6 +88,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Generate coverage badge
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage-artifacts
+
+      - name: Move coverage badges
         run: |
-          echo "Coverage badges will be updated through Codecov integration" 
+          mkdir -p .github/badges
+          mv coverage-artifacts/coverage-badge-agent/coverage-agent.svg .github/badges/ || true
+          mv coverage-artifacts/coverage-badge-ui/coverage-ui.svg .github/badges/ || true
+      
+      - name: Commit coverage badges
+        if: github.ref == 'refs/heads/main'
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '.github/badges'
+          message: 'Update coverage badges [skip ci]'
+          default_author: github_actions
+
+      - name: Combine reports
+        run: |
+          mkdir -p public
+          echo "<html><head><title>Coverage Report</title></head><body>" > public/index.html
+          echo "<h1>Test Coverage Reports</h1>" >> public/index.html
+          echo "<ul>" >> public/index.html
+          
+          if [ -d "coverage-artifacts/coverage-report-agent" ]; then
+            mkdir -p public/agent
+            cp -r coverage-artifacts/coverage-report-agent/* public/agent/
+            echo "<li><a href='./agent/index.html'>Agent Coverage Report</a></li>" >> public/index.html
+          fi
+          
+          if [ -d "coverage-artifacts/coverage-report-ui" ]; then
+            mkdir -p public/ui
+            cp -r coverage-artifacts/coverage-report-ui/* public/ui/
+            echo "<li><a href='./ui/index.html'>UI Coverage Report</a></li>" >> public/index.html
+          fi
+          
+          echo "</ul>" >> public/index.html
+          echo "</body></html>" >> public/index.html
+
+      - name: Deploy coverage reports to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          destination_dir: coverage-reports 

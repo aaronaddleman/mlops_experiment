@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov black flake8 codecov
+          pip install pytest pytest-cov black flake8
 
       - name: Create test directories
         run: |
@@ -46,7 +46,7 @@ jobs:
         run: |
           cd agent
           pip install -r requirements.txt
-          python -m pytest src/test_main.py -v --cov=src --cov-report=xml --cov-report=term-missing
+          python -m pytest src/test_main.py -v --cov=src --cov-report=xml --cov-report=term-missing --cov-report=html
 
       - name: Run UI tests with coverage
         run: |
@@ -54,10 +54,25 @@ jobs:
           pip install -r requirements.txt
           # Add a fallback if no tests found
           if [ -f src/test_ui.py ]; then
-            python -m pytest src/test_ui.py -v --cov=src --cov-report=xml --cov-report=term-missing
+            python -m pytest src/test_ui.py -v --cov=src --cov-report=xml --cov-report=term-missing --cov-report=html
           else
             echo "No UI tests found, skipping"
+            mkdir -p htmlcov
+            echo '<html><body><h1>No tests found</h1></body></html>' > htmlcov/index.html
+            echo '<?xml version="1.0" ?><coverage version="7.3.2"></coverage>' > coverage.xml
           fi
+
+      - name: Generate Agent Coverage Badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: coverage-agent.svg
+          coverage-xml: agent/coverage.xml
+
+      - name: Generate UI Coverage Badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: coverage-ui.svg
+          coverage-xml: ui/coverage.xml
 
       - name: Build and test containers
         run: |
@@ -76,26 +91,44 @@ jobs:
           curl -s http://localhost:5001/ || echo "UI service not available"
           curl -s http://localhost:5001/ | grep "Habit Wizard UI" || echo "UI service response incorrect"
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./agent/coverage.xml,./ui/coverage.xml
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
-
-      - name: Check coverage changes
-        if: github.event_name == 'pull_request'
+      - name: Save coverage badges
         run: |
-          echo "Coverage changes will be reported by Codecov"
+          mkdir -p .github/badges
+          mv coverage-agent.svg .github/badges/ || true
+          mv coverage-ui.svg .github/badges/ || true
 
-      - name: Save test results
+      - name: Commit coverage badges
+        if: github.ref == 'refs/heads/main'
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '.github/badges'
+          message: 'Update coverage badges [skip ci]'
+          default_author: github_actions
+
+      - name: Combine coverage reports
+        run: |
+          mkdir -p public
+          echo "<html><head><title>Coverage Report</title></head><body>" > public/index.html
+          echo "<h1>Test Coverage Reports</h1>" >> public/index.html
+          echo "<ul>" >> public/index.html
+          
+          mkdir -p public/agent
+          cp -r agent/htmlcov/* public/agent/
+          echo "<li><a href='./agent/index.html'>Agent Coverage Report</a></li>" >> public/index.html
+          
+          mkdir -p public/ui
+          cp -r ui/htmlcov/* public/ui/
+          echo "<li><a href='./ui/index.html'>UI Coverage Report</a></li>" >> public/index.html
+          
+          echo "</ul>" >> public/index.html
+          echo "</body></html>" >> public/index.html
+
+      - name: Upload coverage reports
         uses: actions/upload-artifact@v3
         with:
-          name: test-results
+          name: coverage-reports
           path: |
+            public
             agent/coverage.xml
             ui/coverage.xml
           retention-days: 7
@@ -107,6 +140,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-reports
+          path: coverage-reports
+
+      - name: Deploy coverage reports to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./coverage-reports/public
+          destination_dir: coverage-reports
 
       - name: Set up environment for deployment
         run: |

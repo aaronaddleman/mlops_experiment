@@ -1,7 +1,7 @@
 # ML Agent Experiment
 
-[![Agent Coverage](https://codecov.io/gh/mlops_experiment/branch/main/graph/badge.svg?flag=unittests&path=agent/src)](https://codecov.io/gh/mlops_experiment)
-[![UI Coverage](https://codecov.io/gh/mlops_experiment/branch/main/graph/badge.svg?flag=unittests&path=ui/src)](https://codecov.io/gh/mlops_experiment)
+[![Agent Coverage](https://github.com/mlops_experiment/blob/main/.github/badges/coverage-agent.svg)](https://mlops_experiment.github.io/coverage-reports/agent/)
+[![UI Coverage](https://github.com/mlops_experiment/blob/main/.github/badges/coverage-ui.svg)](https://mlops_experiment.github.io/coverage-reports/ui/)
 [![CI/CD](https://github.com/mlops_experiment/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/ci-cd.yml)
 [![Tests](https://github.com/mlops_experiment/actions/workflows/tests.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/tests.yml)
 [![Build](https://github.com/mlops_experiment/actions/workflows/build-test.yml/badge.svg)](https://github.com/mlops_experiment/actions/workflows/build-test.yml)
@@ -70,9 +70,11 @@ pytest src/test_ui.py -v --cov=src --cov-report=term-missing
 
 ### Coverage Reports
 
-- Coverage reports are automatically generated for each pull request
-- Coverage changes are commented on PRs
-- Historical coverage data is available on Codecov
+- Coverage reports are automatically generated for each PR and commit to main
+- Coverage badges are updated automatically
+- Full HTML coverage reports are available on GitHub Pages:
+  - [Agent Coverage Report](https://mlops_experiment.github.io/coverage-reports/agent/)
+  - [UI Coverage Report](https://mlops_experiment.github.io/coverage-reports/ui/)
 
 ## GitHub Workflows
 
@@ -85,7 +87,7 @@ The project uses several GitHub Actions workflows for continuous integration and
 
 ### Tests Workflow (tests.yml)
 - **Triggers**: On code changes to agent or UI, can be run manually
-- **Functions**: Runs tests and uploads coverage reports without container builds
+- **Functions**: Runs tests and generates coverage reports without container builds
 - **Usage**: Fast feedback on code changes during development
 
 ### Build Test (build-test.yml)
