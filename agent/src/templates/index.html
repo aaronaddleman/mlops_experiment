@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Habit Generation Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .task-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .task-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .task-card.active {
+            background-color: #e6ffe6;
+            border-color: #4CAF50;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .start-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        .interval-control {
+            margin: 10px 0;
+        }
+        .interval-control input {
+            width: 100px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Habit Generation Control</h1>
+    
+    <div class="controls">
+        <h2>Controls</h2>
+        <div class="interval-control">
+            <label for="interval">Generation Interval (seconds):</label>
+            <input type="number" id="interval" value="{{ interval }}" min="1" step="1">
+            <button onclick="setInterval()">Update Interval</button>
+        </div>
+        <button id="toggleBtn" class="{{ 'stop-btn' if is_running else 'start-btn' }}" 
+                onclick="toggleAgent()">
+            {{ 'Stop' if is_running else 'Start' }} Generation
+        </button>
+    </div>
+
+    <h2>Available Tasks</h2>
+    <div class="task-list">
+        {% for task in tasks %}
+        <div class="task-card {% if task.id in active_tasks %}active{% endif %}" 
+             onclick="toggleTask('{{ task.id }}')">
+            <h3>{{ task.name }}</h3>
+            <p>{{ task.description }}</p>
+            <p>Category: {{ task.category }}</p>
+            <p>Difficulty: {{ task.difficulty }}/5</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function toggleTask(taskId) {
+            fetch('/toggle_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ task_id: taskId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const card = document.querySelector(`[onclick="toggleTask('${taskId}')"]`);
+                    card.classList.toggle('active');
+                }
+            });
+        }
+
+        function setInterval() {
+            const interval = document.getElementById('interval').value;
+            fetch('/set_interval', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ interval: parseFloat(interval) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Interval updated successfully');
+                } else {
+                    alert('Error updating interval');
+                }
+            });
+        }
+
+        function toggleAgent() {
+            fetch('/toggle_agent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const btn = document.getElementById('toggleBtn');
+                    if (data.is_running) {
+                        btn.textContent = 'Stop Generation';
+                        btn.className = 'stop-btn';
+                    } else {
+                        btn.textContent = 'Start Generation';
+                        btn.className = 'start-btn';
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html> 
