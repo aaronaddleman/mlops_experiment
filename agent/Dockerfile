@@ -7,4 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
-CMD ["python", "-m", "src.main"] 
+# Create data directory and set permissions
+RUN mkdir -p /app/data && chmod 777 /app/data
+
+# Run tests
+RUN pytest src/test_main.py -v --cov=src --cov-report=term-missing
+
+CMD ["python", "src/main.py"] 

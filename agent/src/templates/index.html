@@ -9,6 +9,21 @@
             margin: 0 auto;
             padding: 20px;
         }
+        .log-window {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            white-space: pre-wrap;
+        }
         .task-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -53,13 +68,31 @@
             width: 100px;
             padding: 5px;
         }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #4CAF50;
+        }
+        .countdown.inactive {
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <h1>Habit Generation Control</h1>
     
+    <div class="log-window" id="logWindow"></div>
+    
     <div class="controls">
         <h2>Controls</h2>
+        <div class="countdown {% if not is_running %}inactive{% endif %}" id="countdown">
+            {% if is_running %}
+            Next event in: <span id="countdownValue">--</span> seconds
+            {% else %}
+            Agent is not running
+            {% endif %}
+        </div>
         <div class="interval-control">
             <label for="interval">Generation Interval (seconds):</label>
             <input type="number" id="interval" value="{{ interval }}" min="1" step="1">
@@ -85,6 +118,23 @@
     </div>
 
     <script>
+        const logWindow = document.getElementById('logWindow');
+        
+        function updateLogs() {
+            fetch('/logs')
+                .then(response => response.json())
+                .then(data => {
+                    logWindow.innerHTML = data.logs.map(log => 
+                        `<div class="log-entry">${log}</div>`
+                    ).join('');
+                    logWindow.scrollTop = logWindow.scrollHeight;
+                });
+        }
+
+        // Update logs every second
+        setInterval(updateLogs, 1000);
+        updateLogs(); // Initial update
+
         function toggleTask(taskId) {
             fetch('/toggle_task', {
                 method: 'POST',
@@ -135,12 +185,58 @@
                     if (data.is_running) {
                         btn.textContent = 'Stop Generation';
                         btn.className = 'stop-btn';
+                        startCountdown();
                     } else {
                         btn.textContent = 'Start Generation';
                         btn.className = 'start-btn';
+                        stopCountdown();
                     }
                 }
             });
+        }
+
+        let countdownInterval;
+        let nextEventTime;
+
+        function startCountdown() {
+            const countdownDiv = document.getElementById('countdown');
+            countdownDiv.innerHTML = 'Next event in: <span id="countdownValue">--</span> seconds';
+            countdownDiv.classList.remove('inactive');
+            updateNextEventTime();
+            countdownInterval = setInterval(updateCountdown, 1000);
+        }
+
+        function stopCountdown() {
+            clearInterval(countdownInterval);
+            const countdownDiv = document.getElementById('countdown');
+            countdownDiv.innerHTML = 'Agent is not running';
+            countdownDiv.classList.add('inactive');
+        }
+
+        function updateNextEventTime() {
+            fetch('/next_event_time')
+                .then(response => response.json())
+                .then(data => {
+                    nextEventTime = new Date(data.next_event_time);
+                });
+        }
+
+        function updateCountdown() {
+            if (!nextEventTime) return;
+            
+            const now = new Date();
+            const diff = Math.max(0, Math.floor((nextEventTime - now) / 1000));
+            
+            document.getElementById('countdownValue').textContent = diff;
+            
+            if (diff === 0) {
+                updateNextEventTime();
+            }
+        }
+
+        // Start countdown if agent is running
+        if ({{ is_running }}) {
+            startCountdown();
         }
     </script>
 </body>

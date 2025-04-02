@@ -5,6 +5,7 @@ services:
     build:
       context: ./agent
       dockerfile: Dockerfile
+    command: python src/main.py
     ports:
       - "8000:8000"
     environment:
@@ -12,6 +13,9 @@ services:
     volumes:
       - ./agent:/app
       - /tmp:/tmp
+      - habit_data:/app/data
+    networks:
+      - habit-network
     depends_on:
       - prometheus
 
@@ -24,6 +28,8 @@ services:
       - "5001:5000"
     volumes:
       - ./agent:/app
+    networks:
+      - habit-network
     depends_on:
       - agent
 
@@ -34,6 +40,8 @@ services:
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
+    networks:
+      - habit-network
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -51,9 +59,16 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_SECURITY_ADMIN_USER=admin
+    networks:
+      - habit-network
     depends_on:
       - prometheus
 
+networks:
+  habit-network:
+    driver: bridge
+
 volumes:
   prometheus_data:
-  grafana_data: 
+  grafana_data:
+  habit_data: 
