@@ -79,7 +79,7 @@
         }
     </style>
 </head>
-<body>
+<body data-is-running="{{ is_running|lower }}">
     <h1>Habit Generation Control</h1>
     
     <div class="log-window" id="logWindow"></div>
@@ -163,10 +163,8 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (data.status === 'success') {
-                    alert('Interval updated successfully');
-                } else {
-                    alert('Error updating interval');
+                if (data.status !== 'success') {
+                    console.error('Error updating interval');
                 }
             });
         }
@@ -235,7 +233,8 @@
         }
 
         // Start countdown if agent is running
-        if ({{ is_running }}) {
+        const isRunning = document.body.getAttribute('data-is-running') === 'true';
+        if (isRunning) {
             startCountdown();
         }
     </script>
