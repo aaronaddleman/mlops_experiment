@@ -76,4 +76,19 @@ pytest src/test_ui.py -v --cov=src --cov-report=term-missing
 
 - Prometheus metrics are available at `/metrics` endpoint
 - Basic request count and latency metrics are implemented
-- Grafana can be configured to visualize these metrics 
+- Grafana can be configured to visualize these metrics
+
+## TODO
+
+### Badge Improvements
+- [ ] Add Python version badge
+- [ ] Add license badge
+- [ ] Improve badge layout with shields.io customizations
+- [ ] Add color-coded coverage thresholds
+
+### Testing Documentation
+- [ ] Add detailed test case examples
+- [ ] Document test fixtures and setup
+- [ ] Add integration test scenarios
+- [ ] Create testing best practices guide
+- [ ] Add troubleshooting guide for common test failures 
